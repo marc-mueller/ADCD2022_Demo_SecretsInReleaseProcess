@@ -1,0 +1,80 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  AzureConnection: 'Microsoft Azure Sponsorship (82d445a5-0bf3-454a-804b-2fd0286650c2)'
+  buildConfiguration: 'Release'
+  webArtifactName: 'SecretsWebApp'
+  infrastructureArtifactName: 'Infrastructure'
+stages:
+- stage: build
+  displayName: 'Build and Publish the App'
+  jobs:
+  - job: compileandpublish
+    displayName: 'Compile and Publish App'
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        zipAfterPublish: true
+        arguments: '--configuration $(buildConfiguration) --self-contained true --runtime linux-x64 --output $(Build.ArtifactStagingDirectory)'
+      displayName: 'Build und publish Web App'
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      artifact: '$(webArtifactName)'
+      displayName: 'Create pipeline artifact for web app'
+    - publish: '$(Build.SourcesDirectory)/Infrastructure'
+      artifact: '$(infrastructureArtifactName)'
+      displayName: 'Create pipeline artifact for infrastructure'
+
+- stage: deploy
+  displayName: 'Deploy the App'
+  jobs:
+  - deployment: deployAzure
+    displayName: 'Deploy Infrastructure and App'
+    environment: secretdemoazure
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: '$(infrastructureArtifactName)'
+            displayName: 'Download pipeline artifacts'
+          - download: current
+            artifact: '$(webArtifactName)'
+            displayName: 'Download pipeline artifacts'
+          - task: AzureResourceManagerTemplateDeployment@3
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: $(AzureConnection)
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: 'SecretsDemo'
+              location: 'West Europe'
+              templateLocation: 'Linked artifact'
+              csmFile: '$(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.json'
+              csmParametersFile: '$(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.parameters.json'
+              deploymentMode: 'Incremental'
+            displayName: 'Deploy Key Vault and Storage'
+          - task: AzureResourceManagerTemplateDeployment@3
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: $(AzureConnection)
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: 'SecretsDemo'
+              location: 'West Europe'
+              templateLocation: 'Linked artifact'
+              csmFile: '$(Pipeline.Workspace)/Infrastructure/webapp.json'
+              csmParametersFile: '$(Pipeline.Workspace)/Infrastructure/webapp.parameters.json'
+              deploymentMode: 'Incremental'
+            displayName: 'Deploy Web App with MI'
+          - task: AzureWebApp@1
+            displayName: 'Deploy app to azure web app'
+            inputs:
+              azureSubscription: '$(AzureConnection)'
+              appType: 'webAppLinux'
+              appName: 'secretsdemo-webapp'
+              package: '$(Pipeline.Workspace)/**/HelloWorldSecrets.zip'
+          

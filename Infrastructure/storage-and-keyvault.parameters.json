@@ -1,0 +1,27 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountName": {
+      "value": "demostorage"
+    },
+    "storageContainerName": {
+      "value": "democontainer"
+    },
+    "keyVaultName": {
+      "value": "demovault"
+    },
+    "keyVaultEnabledForTemplateDeployment": {
+      "value": true
+    },
+    "keyVaultObjectId": {
+      "value": "55ab8aed-8036-444e-b3dd-139d23c3f88c"
+    },
+    "keyVaultSecretName": {
+      "value": "theSecret"
+    },
+    "keyVaultSecretValue": {
+      "value": "topsecret123"
+    }
+  }
+}

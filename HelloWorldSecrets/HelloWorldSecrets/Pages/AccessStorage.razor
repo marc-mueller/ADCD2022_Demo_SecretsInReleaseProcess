@@ -1,0 +1,59 @@
+﻿@page "/accessstorage"
+@using Microsoft.Extensions.Configuration
+@using Azure.Storage.Blobs
+@using System.IO
+@using System.Text
+@inject IConfiguration Configuration
+
+<h3>Access Storage</h3>
+
+<button class="btn btn-primary" @onclick="ReadFileFromStorage">
+    Read file from storage
+</button>
+
+<h4>Content:</h4>
+<p>@Content</p>
+
+@code {
+    public string Content { get; set; }
+
+    private async Task ReadFileFromStorage()
+    {
+        try
+        {
+            var maxRetries = 3;
+            for (int i = 1; i <= maxRetries; i++)
+            {
+                try
+                {
+                    var blobServiceClient = new BlobServiceClient(Configuration["ConnectionString"]);
+                    var containerClient = blobServiceClient.GetBlobContainerClient(Configuration["ContainerName"]);
+                    var blobClient = containerClient.GetBlobClient(Configuration["Filename"]);
+                    var result = await blobClient.DownloadAsync().ConfigureAwait(false);
+
+                    using (StreamReader reader = new StreamReader(result.Value.Content, Encoding.UTF8))
+                    {
+                        Content = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    }
+                    break;
+                }
+                catch (Exception)
+                {
+                    await Task.Delay(500);
+                    var configurationRoot = (IConfigurationRoot) Configuration;
+                    configurationRoot.Reload();
+
+                    if (i == maxRetries)
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Content = $"Error during storage access: {ex.Message}";
+        }
+    }
+
+}
