@@ -9,6 +9,8 @@ variables:
   buildConfiguration: 'Release'
   webArtifactName: 'SecretsWebApp'
   infrastructureArtifactName: 'Infrastructure'
+  resourceGroupName: 'SecretsDemo'
+  location: 'westeurope'
 stages:
 - stage: build
   displayName: 'Build and Publish the App'
@@ -46,30 +48,24 @@ stages:
           - download: current
             artifact: '$(webArtifactName)'
             displayName: 'Download pipeline artifacts'
-          - task: AzureResourceManagerTemplateDeployment@3
+          - task: AzureCLI@2
             inputs:
-              deploymentScope: 'Resource Group'
-              azureResourceManagerConnection: $(AzureConnection)
-              action: 'Create Or Update Resource Group'
-              resourceGroupName: 'SecretsDemo'
-              location: 'West Europe'
-              templateLocation: 'Linked artifact'
-              csmFile: '$(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.json'
-              csmParametersFile: '$(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.parameters.json'
-              deploymentMode: 'Incremental'
-            displayName: 'Deploy Key Vault and Storage'
-          - task: AzureResourceManagerTemplateDeployment@3
+              azureSubscription: $(AzureConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az group create --name $(resourceGroupName) --location $(location)
+                az deployment group create --resource-group $(resourceGroupName) --template-file $(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.bicep --parameters @$(Pipeline.Workspace)/Infrastructure/storage-and-keyvault.parameters.json
+            displayName: "Deploy Storage and KeyVault Infrastructure"
+          - task: AzureCLI@2
             inputs:
-              deploymentScope: 'Resource Group'
-              azureResourceManagerConnection: $(AzureConnection)
-              action: 'Create Or Update Resource Group'
-              resourceGroupName: 'SecretsDemo'
-              location: 'West Europe'
-              templateLocation: 'Linked artifact'
-              csmFile: '$(Pipeline.Workspace)/Infrastructure/webapp.json'
-              csmParametersFile: '$(Pipeline.Workspace)/Infrastructure/webapp.parameters.json'
-              deploymentMode: 'Incremental'
-            displayName: 'Deploy Web App with MI'
+              azureSubscription: $(AzureConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az group create --name $(resourceGroupName) --location $(location)
+                az deployment group create --resource-group $(resourceGroupName) --template-file $(Pipeline.Workspace)/Infrastructure/webapp.bicep --parameters @$(Pipeline.Workspace)/Infrastructure/webapp.parameters.json
+            displayName: "Deploy WebApp Infrastructure"
           - task: AzureWebApp@1
             displayName: 'Deploy app to azure web app'
             inputs:
