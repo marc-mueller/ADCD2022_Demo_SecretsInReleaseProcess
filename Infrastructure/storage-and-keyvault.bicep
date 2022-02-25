@@ -37,9 +37,6 @@ param keyVaultEnabledForTemplateDeployment bool = false
 @description('Specifies the Azure Active Directory tenant ID that should be used for authenticating requests to the key vault. Get it by using Get-AzSubscription cmdlet.')
 param keyVaultTenantId string = subscription().tenantId
 
-@description('Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets.')
-param keyVaultObjectId string
-
 @description('Specifies the name of the secret that you want to create.')
 param keyVaultSecretName string
 
@@ -48,6 +45,12 @@ param keyVaultSecretName string
 param keyVaultSecretValue string
 
 param location string = resourceGroup().location
+
+@description('Specifies a list of object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault with reader permissions on secrets. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets.')
+param readerObjectIds array
+
+@description('Specifies a list of object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault with admin permissions on secrets. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets.')
+param adminObjectIds array
 
 var storageAccountUniqueName = '${storageAccountName}${uniqueString(resourceGroup().id)}'
 var keyVaultUniqueName = '${keyVaultName}${uniqueString(resourceGroup().id)}'
@@ -78,92 +81,14 @@ resource storageContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
   ]
 }
 
+
 resource keyVault 'Microsoft.KeyVault/vaults@2018-02-14' = {
   name: keyVaultUniqueName
   location: location
   properties: {
     enabledForTemplateDeployment: keyVaultEnabledForTemplateDeployment
     tenantId: keyVaultTenantId
-    accessPolicies: [
-      {
-        objectId: keyVaultObjectId
-        tenantId: keyVaultTenantId
-        permissions: {
-          keys: [
-            'backup'
-            'create'
-            'decrypt'
-            'delete'
-            'encrypt'
-            'get'
-            'import'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'sign'
-            'unwrapKey'
-            'update'
-            'verify'
-            'wrapKey'
-          ]
-          secrets: [
-            'backup'
-            'delete'
-            'get'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'set'
-          ]
-        }
-      }
-      {
-        objectId: 'f0b1f976-d38d-4072-a330-aaf05bcda789'
-        tenantId: keyVaultTenantId
-        permissions: {
-          keys: [
-            'backup'
-            'create'
-            'decrypt'
-            'delete'
-            'encrypt'
-            'get'
-            'import'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'sign'
-            'unwrapKey'
-            'update'
-            'verify'
-            'wrapKey'
-          ]
-          secrets: [
-            'backup'
-            'delete'
-            'get'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'set'
-          ]
-        }
-      }
-      {
-        objectId: 'd71088be-66f0-42fd-bd4c-ab9806717617'
-        tenantId: keyVaultTenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-    ]
+    accessPolicies: union(readerPolicies,adminPolicies)
     sku: {
       name: keyVaultSkuName
       family: 'A'
@@ -173,7 +98,44 @@ resource keyVault 'Microsoft.KeyVault/vaults@2018-02-14' = {
       bypass: 'AzureServices'
     }
   }
+  
 }
+
+var readerPolicies = [for objectId in readerObjectIds: {
+  objectId: objectId
+    tenantId: keyVaultTenantId
+    permissions: {
+      secrets: [
+        'get'
+        'list'
+      ]
+    }
+}]
+
+var adminPolicies = [for objectId in adminObjectIds: {
+  objectId: objectId
+    tenantId: keyVaultTenantId
+    permissions: {
+      secrets: [
+        'backup'
+        'delete'
+        'get'
+        'list'
+        'purge'
+        'recover'
+        'restore'
+        'set'
+      ]
+    }
+}]
+
+// resource kvReaderPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-10-01' = {
+//   name: '${keyVault.name}/add'
+//   properties:{
+//     accessPolicies: union(readerPolicies,adminPolicies)
+//   }
+// }
+
 
 resource keyVaultDemoSecret 'Microsoft.KeyVault/vaults/secrets@2018-02-14' = {
   parent: keyVault

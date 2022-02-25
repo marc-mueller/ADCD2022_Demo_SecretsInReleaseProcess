@@ -14,8 +14,17 @@
     "keyVaultEnabledForTemplateDeployment": {
       "value": true
     },
-    "keyVaultObjectId": {
-      "value": "55ab8aed-8036-444e-b3dd-139d23c3f88c"
+    "readerObjectIds": {
+      "value": [
+        "66c08d6a-a1a7-4a56-9537-eebeaa2ee684",
+        "d71088be-66f0-42fd-bd4c-ab9806717617"
+      ]
+    },
+    "adminObjectIds": {
+      "value": [
+        "f0b1f976-d38d-4072-a330-aaf05bcda789",
+        "8962da15-33b5-4d95-b430-3797d2557e3c"
+      ]
     },
     "keyVaultSecretName": {
       "value": "theSecret"
