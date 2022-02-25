@@ -81,14 +81,13 @@ resource storageContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
   ]
 }
 
-
 resource keyVault 'Microsoft.KeyVault/vaults@2018-02-14' = {
   name: keyVaultUniqueName
   location: location
   properties: {
     enabledForTemplateDeployment: keyVaultEnabledForTemplateDeployment
     tenantId: keyVaultTenantId
-    accessPolicies: union(readerPolicies,adminPolicies)
+    accessPolicies: union(readerPolicies, adminPolicies)
     sku: {
       name: keyVaultSkuName
       family: 'A'
@@ -98,44 +97,35 @@ resource keyVault 'Microsoft.KeyVault/vaults@2018-02-14' = {
       bypass: 'AzureServices'
     }
   }
-  
 }
 
 var readerPolicies = [for objectId in readerObjectIds: {
   objectId: objectId
-    tenantId: keyVaultTenantId
-    permissions: {
-      secrets: [
-        'get'
-        'list'
-      ]
-    }
+  tenantId: keyVaultTenantId
+  permissions: {
+    secrets: [
+      'get'
+      'list'
+    ]
+  }
 }]
 
 var adminPolicies = [for objectId in adminObjectIds: {
   objectId: objectId
-    tenantId: keyVaultTenantId
-    permissions: {
-      secrets: [
-        'backup'
-        'delete'
-        'get'
-        'list'
-        'purge'
-        'recover'
-        'restore'
-        'set'
-      ]
-    }
+  tenantId: keyVaultTenantId
+  permissions: {
+    secrets: [
+      'backup'
+      'delete'
+      'get'
+      'list'
+      'purge'
+      'recover'
+      'restore'
+      'set'
+    ]
+  }
 }]
-
-// resource kvReaderPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-10-01' = {
-//   name: '${keyVault.name}/add'
-//   properties:{
-//     accessPolicies: union(readerPolicies,adminPolicies)
-//   }
-// }
-
 
 resource keyVaultDemoSecret 'Microsoft.KeyVault/vaults/secrets@2018-02-14' = {
   parent: keyVault
